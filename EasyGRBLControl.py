@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-"""\
-Simple g-code streaming script for grbl
-"""
+
+# Control GRBL from the command line with a minimalistic interface, while allowing for streaming of massive files
+# Written for Python 2
  
-import serial
+import serial # sudo pip install pyserial
 import time
 import sys
 
@@ -22,36 +22,114 @@ serialConnection.write("\r\n\r\n")
 time.sleep(2)   # Wait for grbl to initialize
 serialConnection.flushInput()  # Flush startup text in serial input
 
-
-# Get filename
 try:
 	filename = sys.argv[1]
+	streamFile()
 except IndexError:
-	# Show open dialog
-	root = tk.Tk()
-	root.withdraw()
-	filename = tkFileDialog.askopenfilename()
+	filename = ""
 
-print("Loading file: " + str(filename))
+probeMacro = """
+G0 Z0
+"""
 
-openFile = open(filename, 'r')
+def streamFile():
+	""" This command can be called from the main prompt, prompts for file location and streams file """
 
-# Stream g-code to grbl
-for line in openFile:
-    l = line.strip() # Strip all EOL characters for streaming
-    print 'Sending: ' + l,
-    serialConnection.write(l + '\n') # Send g-code block to grbl
-    grbl_out = serialConnection.readline() # Wait for grbl response with carriage return
-    
-    if "Grbl" in grbl_out and "for help" in grbl_out:
-    	# There was a reset, exit steaming
-    	break
+	# Get filename
+	if filename == "":
+		# Show open dialog
+		root = tk.Tk()
+		root.withdraw()
+		filename = tkFileDialog.askopenfilename()
 
-    print ' : ' + grbl_out.strip()
+	if raw_input('Press enter to begin streaming "' + str(filename) + '" or type quit and press enter to go back to prompt.'):
+		return 1
+
+	openFile = open(filename, 'r')
+
+	startTime = time.time()
+
+	# Stream g-code to grbl
+	for line in openFile:
+	    l = line.strip() # Strip all EOL characters for streaming
+	    print 'Sending: ' + l,
+	    serialConnection.write(l + '\n') # Send g-code block to grbl
+	    grbl_out = serialConnection.readline() # Wait for grbl response with carriage return
+	    
+	    if "Grbl" in grbl_out and "for help" in grbl_out:
+	    	# There was a reset (ie Emergency Stop), exit steaming
+	    	break
+
+	    print ' : ' + grbl_out.strip()
+
+    # Close g-code 
+	openFile.close()
+	filename = ""
+
+    print ("Done streaming file in " + str(round((time.time() - startTime)/60, 2)) + " minutes.")
+
+def sendMacro():
+	print("sendMacro not currently implemented")
+
+def sendCommand():
+	print("sendCommand not currently implented")
  
-# Wait here until grbl is finished to close serial port and file.
-raw_input("  Press <Enter> to exit and disable grbl.")
- 
-# Close file and serial port
-openFile.close()
-serialConnection.close()
+def closeConnections():
+	# Close serial port
+	serialConnection.close()
+	print("Closed serial connection, exiting now.")
+	sys.exit()
+
+def printHelp():
+	print("""
+Use the following commands:
+	- help: displays this help message
+	- probe thickness speed=25 maxdepth=10: probes worksurface at current XY position, to a maximum depth of "maxdepth" (default 10) at a speed of "speed" (default 25), moves tool back up, and sets current height to the touchplate's thickness, "thickness"
+	- send: prompt for filename and stream that file (prompts for confirmation)
+	- quit: closes serial connection and quits
+
+Any other command starting with '$' or 'G' will be sent directly to GRBL. Any other command will simply give an error.
+
+Example Commands:
+	- help
+	- probe 12
+	- probe 20 30 5
+	- send
+	- quit
+""")
+
+printHelp()
+
+while True:
+	command = raw_input(">>> ")
+	if command == "help":
+		printHelp()
+	elif command == "quit":
+		closeConnections()
+	elif command == "send":
+		streamFile()
+	elif command[:5] == "probe":
+		commandSplit = command.split(" ")
+		try:
+			thickness = commandSplit[1]
+		except:
+			print("No/invalid thickness provided.")
+			continue
+		try:
+			speed = commandSplit[2]
+		except:
+			speed = 25
+		try:
+			maxdepth = commandSplit[3]
+		except:
+			maxdepth = 10
+		sendMacro(probeMacro.replace("thickness", thickness).replace("speed", speed).replace("maxdepth", maxdepth))
+	elif command[0] == "$" or command[0] == "G":
+		sendCommand(command)
+	else:
+		print("Invalid command supplied. Try again.")
+
+
+
+
+
