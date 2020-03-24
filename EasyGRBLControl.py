@@ -51,29 +51,34 @@ def streamFile():
 
 	# Stream g-code to grbl
 	for line in openFile:
-	    l = line.strip() # Strip all EOL characters for streaming
-	    print 'Sending: ' + l,
-	    serialConnection.write(l + '\n') # Send g-code block to grbl
-	    grbl_out = serialConnection.readline() # Wait for grbl response with carriage return
-	    
-	    if "Grbl" in grbl_out and "for help" in grbl_out:
-	    	# There was a reset (ie Emergency Stop), exit steaming
-	    	break
+		l = line.strip() # Strip all EOL characters for streaming
+		print 'Sending: ' + l,
+		serialConnection.write(l + '\n') # Send g-code block to grbl
+		grbl_out = serialConnection.readline() # Wait for grbl response with carriage return
+		
+		if "Grbl" in grbl_out and "for help" in grbl_out:
+			# There was a reset (ie Emergency Stop), exit steaming
+			break
 
-	    print ' : ' + grbl_out.strip()
+		print ' : ' + grbl_out.strip()
 
-    # Close g-code 
+	# Close g-code 
 	openFile.close()
 	filename = ""
 
-    print ("Done streaming file in " + str(round((time.time() - startTime)/60, 2)) + " minutes.")
+	print ("Done streaming file in " + str(round((time.time() - startTime)/60, 2)) + " minutes.")
 
 def sendMacro():
 	print("sendMacro not currently implemented")
 
-def sendCommand():
-	print("sendCommand not currently implented")
- 
+def sendCommand(l):
+	"""
+	Sends a single line of GCode to the machine
+	"""
+	serialConnection.write(l + '\n') # Send g-code block to grbl
+	grbl_out = serialConnection.readline() # Wait for grbl response with carriage return
+	print ' : ' + grbl_out.strip()
+
 def closeConnections():
 	# Close serial port
 	serialConnection.close()
@@ -101,14 +106,22 @@ Example Commands:
 printHelp()
 
 while True:
+	# Prompt for Input
 	command = raw_input(">>> ")
+
+	# Convert to Lower Case, Strip leading/trailing whitespaces
+	command = command.lower().strip()
+
 	if command == "help":
 		printHelp()
-	elif command == "quit":
+
+	elif command == "quit" or command == "exit":
 		closeConnections()
+
 	elif command == "send":
 		streamFile()
-	elif command[:5] == "probe":
+
+	elif command.startswith("probe"):
 		commandSplit = command.split(" ")
 		try:
 			thickness = commandSplit[1]
@@ -124,10 +137,12 @@ while True:
 		except:
 			maxdepth = 10
 		sendMacro(probeMacro.replace("thickness", thickness).replace("speed", speed).replace("maxdepth", maxdepth))
-	elif command[0] == "$" or command[0] == "G":
+
+	elif command[0] == "$" or command[0] == "g" or command[0] == "m":
 		sendCommand(command)
+
 	else:
-		print("Invalid command supplied. Try again.")
+		print("Invalid command. Try again.")
 
 
 
