@@ -28,13 +28,18 @@ if len(sys.argv) == 2:
 	streamFile(filename)
 
 probeMacro = """
-G90
+G91
 G38.2 Z-{0[maxdepth]} F{0[speed]}
 G92 Z{0[thickness]}
 G91
 G0 Z8
 """
 # Probes, stop on contact. Sets the current height to the thickness. Sets to relative movement. Raises 8mm to get plate out.
+
+# Send at the start of sending a file everytime (sets absolute coordinates)
+startStreamingMacro = """
+G90
+"""
 
 promptTemplate = "({mode}) >>> "
 modeOptions = {"abs/rel": "abs"}
@@ -83,6 +88,9 @@ def streamFile(filename=None):
 	startTime = time.time()
 	curLineNumber = 0
 	gcodeFile = open(filename, 'r')
+
+	# Prepare for sending
+	sendMacro(startStreamingMacro)
 
 	# Clear Read Buffer, on case of reset
 	incomingSerial = getIncomingSerial()
