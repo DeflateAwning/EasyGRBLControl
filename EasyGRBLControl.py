@@ -66,7 +66,7 @@ def streamFile(filename=None):
 		# Show open dialog
 		root = tk.Tk()
 		root.withdraw()
-		filename = tkFileDialog.askgcodeFilename(initialdir="/home/parker/Dropbox/1Parker/")
+		filename = tkFileDialog.askopenfilename(initialdir="/home/")
 
 	if raw_input('Press enter to begin streaming "' + str(filename) + '" or type quit and press enter to go back to prompt.'):
 		print("Cancelled streaming.")
@@ -84,6 +84,11 @@ def streamFile(filename=None):
 	curLineNumber = 0
 	gcodeFile = open(filename, 'r')
 
+	# Clear Read Buffer, on case of reset
+	incomingSerial = getIncomingSerial()
+	if len(incomingSerial) > 0:
+		print("Received Before Streaming: " + incomingSerial)
+
 	# Stream g-code to grbl
 	for line in gcodeFile:
 		l = line.strip() # Strip all EOL characters for streaming
@@ -91,14 +96,15 @@ def streamFile(filename=None):
 
 		print('Sending: ' + l)
 		serialConnection.write(l + '\n') # Send g-code block to grbl
-		incomingSerial = getIncomingSerial()
+		# incomingSerial = getIncomingSerial() # fails because it doesn't wait
+		incomingSerial = serialConnection.readline().strip() # wait for 'ok' before sending next line
+
+		print('Received: ' + incomingSerial + " -> \t\t" + str(curLineNumber) + "/" + str(totalLines) + "=" + str(round(curLineNumber*100/totalLines, 2)) + "% in " + str(round((time.time()-startTime)/60, 2)) + " min")
 		
 		if "Grbl" in incomingSerial and "for help" in incomingSerial:
 			# There was a reset (ie Emergency Stop), exit steaming
 			print("EMERGENCY STOPPING STREAMING, likely an emergency stop or reset")
 			break
-
-		print('Received: ' + incomingSerial + " : \t\t" + str(curLineNumber) + "/" + str(totalLines) + "=" + str(round(curLineNumber*100/totalLines, 2)) + "% in " + str(round((time.time()-startTime)/60, 2)) + " min")
 
 	# Close g-code 
 	gcodeFile.close()
