@@ -47,7 +47,8 @@ def getIncomingSerial():
 	If it's just an 'ok', it puts it on the same line. Otherwise, it puts it on a new line.
 	"""
 	out = ""
-	while serialConnection.in_waiting == 0:
+	serialReadStartTime = time.time()
+	while serialConnection.in_waiting == 0 and (time.time() - serialReadStartTime < 0.15):
 		#print("Delaying while the machine sends an output")
 		time.sleep(0.05)
 
@@ -217,6 +218,9 @@ while True:
 		print("Invalid command. Try again.")
 
 
-
+	# Clear Read Buffer, on case of reset
+	incomingSerial = getIncomingSerial()
+	if len(incomingSerial) > 0:
+		print("Received After: " + incomingSerial)
 
 
