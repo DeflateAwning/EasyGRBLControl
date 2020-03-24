@@ -31,6 +31,9 @@ probeMacro = """
 G0 Z0
 """
 
+promptTemplate = "({mode}) >>> "
+modeOptions = {"abs/rel": "abs"}
+
 def streamFile(filename=None):
 	""" This command can be called from the main prompt, prompts for file location and streams file """
 
@@ -118,7 +121,7 @@ printHelp()
 
 while True:
 	# Prompt for Input
-	command = raw_input(">>> ")
+	command = raw_input(promptTemplate.format(mode=','.join(modeOptions.values())))
 
 	# Convert to Lower Case, Strip leading/trailing whitespaces
 	command = command.lower().strip()
@@ -134,8 +137,10 @@ while True:
 
 	elif command.startswith('abs'):
 		sendCommand("G90")
+		modeOptions["abs/rel"] = "abs"
 	elif command.startswith('rel'):
 		sendCommand("G91")
+		modeOptions["abs/rel"] = "rel"
 
 	elif command.startswith("probe"):
 		commandSplit = command.split(" ")
