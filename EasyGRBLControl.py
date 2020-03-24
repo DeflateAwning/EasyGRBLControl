@@ -14,7 +14,7 @@ import tkFileDialog
 try:
 	serialConnection = serial.Serial('/dev/ttyUSB0', 115200)
 except serial.serialutil.SerialException:
-	print("Cannot open serial port (check location and permissions)")
+	print("Cannot open serial port 'ttyUSB0' (check location and permissions)")
 	sys.exit()
 
 # Wake up grbl
@@ -22,62 +22,71 @@ serialConnection.write("\r\n\r\n")
 time.sleep(2)   # Wait for grbl to initialize
 serialConnection.flushInput()  # Flush startup text in serial input
 
-try:
+# Stream the command line argument file, generally not used
+if len(sys.argv) == 2:
 	filename = sys.argv[1]
-	streamFile()
-except IndexError:
-	filename = ""
+	streamFile(filename)
 
 probeMacro = """
 G0 Z0
 """
 
-def streamFile():
+def streamFile(filename=None):
 	""" This command can be called from the main prompt, prompts for file location and streams file """
 
 	# Get filename
-	if filename == "":
+	if filename is None:
 		# Show open dialog
 		root = tk.Tk()
 		root.withdraw()
-		filename = tkFileDialog.askopenfilename()
+		filename = tkFileDialog.askgcodeFilename(initialdir="/home/parker/Dropbox/1Parker/")
 
 	if raw_input('Press enter to begin streaming "' + str(filename) + '" or type quit and press enter to go back to prompt.'):
 		return 1
 
-	openFile = open(filename, 'r')
+	# Count the number of lines in the file (for estimation purposes)
+	# In the future, also calculate distance from this info
+	gcodeFile = open(filename, 'r')
+	totalLines = 0
+	for line in gcodeFile:
+		totalLines += 1
+	gcodeFile.close()
 
 	startTime = time.time()
+	curLineNumber = 0
+	gcodeFile = open(filename, 'r')
 
 	# Stream g-code to grbl
-	for line in openFile:
+	for line in gcodeFile:
 		l = line.strip() # Strip all EOL characters for streaming
+		curLineNumber += 1
+
 		print 'Sending: ' + l,
 		serialConnection.write(l + '\n') # Send g-code block to grbl
-		grbl_out = serialConnection.readline() # Wait for grbl response with carriage return
+		incomingSerialLine = serialConnection.readline() # Wait for grbl response with carriage return
 		
-		if "Grbl" in grbl_out and "for help" in grbl_out:
+		if "Grbl" in incomingSerialLine and "for help" in incomingSerialLine:
 			# There was a reset (ie Emergency Stop), exit steaming
+			print ("EMERGENCY STOPPING STREAMING, likely an emergency stop or reset")
 			break
 
-		print ' : ' + grbl_out.strip()
+		print ' : ' + incomingSerialLine.strip() + " : \t\t" + str(curLineNumber) + "/" + str(totalLines) + "=" + str(round(curLineNumber*100/totalLines, 2)) + "% in " + str(round((time.time()-startTime)/60, 2)) + " min"
 
 	# Close g-code 
-	openFile.close()
-	filename = ""
+	gcodeFile.close()
 
-	print ("Done streaming file in " + str(round((time.time() - startTime)/60, 2)) + " minutes.")
+	print("Done streaming file in {:.2f} minutes.".format((time.time() - startTime)/60))
 
 def sendMacro():
 	print("sendMacro not currently implemented")
 
 def sendCommand(l):
 	"""
-	Sends a single line of GCode to the machine
+	Sends a single line of GCode to the machine, generally from prompt
 	"""
 	serialConnection.write(l + '\n') # Send g-code block to grbl
-	grbl_out = serialConnection.readline() # Wait for grbl response with carriage return
-	print ' : ' + grbl_out.strip()
+	incomingSerialLine = serialConnection.readline() # Wait for grbl response with carriage return
+	print ' : ' + incomingSerialLine.strip()
 
 def closeConnections():
 	# Close serial port
@@ -139,6 +148,7 @@ while True:
 		sendMacro(probeMacro.replace("thickness", thickness).replace("speed", speed).replace("maxdepth", maxdepth))
 
 	elif command[0] == "$" or command[0] == "g" or command[0] == "m":
+		# Accept Single G-Codes and M-Codes
 		sendCommand(command)
 
 	else:
