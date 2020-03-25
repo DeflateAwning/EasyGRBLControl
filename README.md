@@ -27,4 +27,11 @@ Example Commands:
 
 ## To Do
 * Change to Python3
-* Improve readline to readlines system in reading buffer
+* ~Improve readline to readlines system in reading buffer~
+
+## Setup Instructions
+To setup the software, do the following:
+```bash
+sudo pip3 install -r requirements.txt
+sudo apt-get install python3-tk
+```

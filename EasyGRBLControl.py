@@ -1,14 +1,15 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Control GRBL from the command line with a minimalistic interface, while allowing for streaming of massive files
-# Written for Python 2
+# Now for Python3
  
-import serial # sudo pip install pyserial
+import serial # sudo pip3 install pyserial
 import time
 import sys
 
-import Tkinter as tk
-import tkFileDialog
+# For GUI Reading Filename
+import tkinter as tk
+from tkinter import filedialog
 
 # Open grbl serial port
 try:
@@ -71,9 +72,10 @@ def streamFile(filename=None):
 		# Show open dialog
 		root = tk.Tk()
 		root.withdraw()
-		filename = tkFileDialog.askopenfilename(initialdir="/home/")
 
-	if raw_input('Press enter to begin streaming "' + str(filename) + '" or type quit and press enter to go back to prompt.'):
+		filename = filedialog.askopenfilename()
+
+	if input('Press enter to begin streaming "' + str(filename) + '" or type quit and press enter to go back to prompt.'):
 		print("Cancelled streaming.")
 		return 1
 
@@ -182,7 +184,7 @@ printHelp()
 
 while True:
 	# Prompt for Input
-	command = raw_input(promptTemplate.format(mode=','.join(modeOptions.values())))
+	command = input(promptTemplate.format(mode=','.join(modeOptions.values())))
 
 	# Convert to Lower Case, Strip leading/trailing whitespaces
 	command = command.lower().strip()
@@ -218,7 +220,7 @@ while True:
 			probeOptions["thickness"] = float(commandSplit[3])
 		except:
 			pass
-		if not raw_input("Press enter to confirm sending probe with options: {} >>> ".format(probeOptions)):
+		if not input("Press enter to confirm sending probe with options: {} >>> ".format(probeOptions)):
 			sendMacro(probeMacro.format(probeOptions))
 			print("Probing Complete.")
 		else:
