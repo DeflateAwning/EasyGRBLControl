@@ -18,8 +18,15 @@ except serial.serialutil.SerialException:
 	print("Cannot open serial port 'ttyUSB0' (check location and permissions)")
 	sys.exit()
 
+def writeToSerial(command):
+	""" 
+	Writes a string to serial
+	Avoids bug with Unicode strings not being passible by serial
+	"""
+	serialConnection.write(command.encode())
+
 # Wake up grbl
-serialConnection.write("\r\n\r\n")
+writeToSerial("\r\n\r\n")
 time.sleep(2)   # Wait for grbl to initialize
 serialConnection.flushInput()  # Flush startup text in serial input
 
@@ -59,7 +66,7 @@ def getIncomingSerial():
 		time.sleep(0.05)
 
 	while serialConnection.in_waiting > 0:
-		out += serialConnection.read_until().strip() + "\n"
+		out += serialConnection.read_until().decode().strip() + "\n"
 	out = out.strip()
 	return out
 
@@ -105,9 +112,9 @@ def streamFile(filename=None):
 		curLineNumber += 1
 
 		print('Sending: ' + l)
-		serialConnection.write(l + '\n') # Send g-code block to grbl
+		writeToSerial(l + '\n') # Send g-code block to grbl
 		# incomingSerial = getIncomingSerial() # fails because it doesn't wait
-		incomingSerial = serialConnection.readline().strip() # wait for 'ok' before sending next line
+		incomingSerial = serialConnection.readline().decode().strip() # wait for 'ok' before sending next line
 
 		print('Received: ' + incomingSerial + " -> \t\t" + str(curLineNumber) + "/" + str(totalLines) + "=" + str(round(curLineNumber*100/totalLines, 2)) + "% in " + str(round((time.time()-startTime)/60, 2)) + " min")
 		
@@ -147,7 +154,7 @@ def sendCommand(l):
 	elif l.lower() == "g91":
 		modeOptions["abs/rel"] = "rel"
 
-	serialConnection.write(l + '\n') # Send g-code block to grbl
+	writeToSerial(l + '\n') # Send g-code block to grbl
 	#incomingSerial = serialConnection.readline() # Wait for grbl response with carriage return
 	incomingSerial = getIncomingSerial()
 	print("\tReceived: " + incomingSerial)
@@ -213,11 +220,11 @@ while True:
 		except:
 			pass
 		try:
-			probeOptions["thickness"] = float(commandSplit[2])
+			probeOptions["speed"] = float(commandSplit[2])
 		except:
 			pass
 		try:
-			probeOptions["thickness"] = float(commandSplit[3])
+			probeOptions["maxdepth"] = float(commandSplit[3])
 		except:
 			pass
 		if not input("Press enter to confirm sending probe with options: {} >>> ".format(probeOptions)):
