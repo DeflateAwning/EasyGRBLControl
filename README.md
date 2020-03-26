@@ -10,6 +10,7 @@ Use the following commands:
 	- probe <thickness of touch plate=19.25> <speed=25> <maxdepth=10>: probes worksurface at current XY position (default shown), moves tool back up, and sets the appropriate height (touchplate thickness)
 	- send: prompt for filename and stream that file (prompts for confirmation)
 	- abs/rel: absolute coordinate mode/relative coordinate mode (G90=abs, G91=rel)
+	- lock/unlock: lock motors after motion, or disable that functionality
 	- quit: closes serial connection and quits
 
 Any other command starting with '$' or 'G' will be sent directly to GRBL. Any other command will simply give an error.
@@ -20,14 +21,21 @@ Example Commands:
 	- probe 12
 	- probe 20 30 5
 	- send
+
 	- abs/rel
+	- lock/unlock
+	- zero
+	- where
+
 	- G0 X10
 	- quit
 ```
 
 ## To Do
-* Change to Python3
+* ~Change to Python3~
 * ~Improve readline to readlines system in reading buffer~
+* Add motion with keyboard (by big/small/tiny steps, probably)
+* Up arrow to recall last command
 
 ## Setup Instructions
 To setup the software, do the following:

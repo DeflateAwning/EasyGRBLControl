@@ -50,8 +50,41 @@ G90
 """
 
 promptTemplate = "({mode}) >>> "
-modeOptions = {"abs/rel": "abs"}
+modeOptions = {"abs/rel": "abs", "lock": "lock?"}
 
+passthroughStartStrings = ["g", "m", "$", "~", "!", "?", "x", "y", "z"]
+
+# gcode can be multiple lines
+commandShortcuts = {
+	"where": {
+		"Description": "Gets the current position of the head",
+		"gcode": "?"
+	},
+	"zero": {
+		"Description": "Sets current position to (0, 0, 0)",
+		"gcode": "G92 X0 Y0 Z0"
+	},
+	"abs": {
+		"Description": "Switch to absolute coordinates (G90)",
+		"gcode": "G90",
+		"options": {"abs/rel": "abs"}
+	},
+	"rel": {
+		"Description": "Switch to relative coordinates (G91)",
+		"gcode": "G91",
+		"options": {"abs/rel": "abs"}
+	},
+	"lock": {
+		"Description": "Lock all motors after motion forever (must be disabled)",
+		"gcode": "$1=255",
+		"options": {"lock": "lock"}
+	},
+	"unlock": {
+		"Description": "Unlock motors after motion is finished ($1=100ms).",
+		"gcode": "$1=100",
+		"options": {"lock": "unlock"}
+	}
+}
 
 def getIncomingSerial():
 	"""
@@ -149,9 +182,9 @@ def sendCommand(l):
 	"""
 	l = l.strip()
 
-	if l.lower() == "g90":
+	if "g90" in l.lower():
 		modeOptions["abs/rel"] = "abs"
-	elif l.lower() == "g91":
+	elif "g91" in l.lower():
 		modeOptions["abs/rel"] = "rel"
 
 	writeToSerial(l + '\n') # Send g-code block to grbl
@@ -172,6 +205,7 @@ Use the following commands:
 	- probe <thickness of touch plate=19.25> <speed=25> <maxdepth=10>: probes worksurface at current XY position (default shown), moves tool back up, and sets the appropriate height (touchplate thickness)
 	- send: prompt for filename and stream that file (prompts for confirmation)
 	- abs/rel: absolute coordinate mode/relative coordinate mode (G90=abs, G91=rel)
+	- lock/unlock: lock motors after motion, or disable that functionality
 	- quit: closes serial connection and quits
 
 Any other command starting with '$' or 'G' will be sent directly to GRBL. Any other command will simply give an error.
@@ -182,7 +216,12 @@ Example Commands:
 	- probe 12
 	- probe 20 30 5
 	- send
+
 	- abs/rel
+	- lock/unlock
+	- zero
+	- where
+
 	- G0 X10
 	- quit
 """)
@@ -205,12 +244,10 @@ while True:
 	elif command == "send":
 		streamFile()
 
-	elif command.startswith('abs'):
-		sendCommand("G90")
-		modeOptions["abs/rel"] = "abs"
-	elif command.startswith('rel'):
-		sendCommand("G91")
-		modeOptions["abs/rel"] = "rel"
+	elif command in commandShortcuts.keys():
+		print("Sending shortcut: '{}'".format(commandShortcuts[command]["gcode"]))
+		sendMacro(commandShortcuts[command]["gcode"])
+		modeOptions.update(commandShortcuts[command].get("options", {}))
 
 	elif command.startswith("probe"):
 		commandSplit = command.split(" ")
@@ -233,7 +270,7 @@ while True:
 		else:
 			print("Cancelled Probe.")
 
-	elif command.startswith("$") or command.startswith("g") or command.startswith("m"):
+	elif any([command.startswith(i) for i in passthroughStartStrings]):
 		# Accept Single G-Codes and M-Codes
 		sendCommand(command)
 
