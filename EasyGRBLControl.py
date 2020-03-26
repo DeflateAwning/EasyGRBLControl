@@ -41,8 +41,9 @@ G38.2 Z-{0[maxdepth]} F{0[speed]}
 G92 Z{0[thickness]}
 G91
 G0 Z8
+G90
 """
-# Probes, stop on contact. Sets the current height to the thickness. Sets to relative movement. Raises 8mm to get plate out.
+# Probes, stop on contact. Sets the current height to the thickness. Sets to relative movement. Raises 8mm to get plate out. Absolute.
 
 # Send at the start of sending a file everytime (sets absolute coordinates)
 startStreamingMacro = """
@@ -90,7 +91,7 @@ def getIncomingSerial():
 	"""
 	Gets all currently waiting incoming serial data from the serial connection.
 
-	If it's just an 'ok', it puts it on the same line. Otherwise, it puts it on a new line.
+	If it's just an 'ok', it puts it on the same line. Otherwise, it puts it on a new line. -> Coming Soon
 	"""
 	out = ""
 	serialReadStartTime = time.time()
@@ -102,6 +103,14 @@ def getIncomingSerial():
 		out += serialConnection.read_until().decode().strip() + "\n"
 	out = out.strip()
 	return out
+
+def getIncomingSerialWait():
+	"""
+	Waits for an incoming serial response. Only reads a single line!
+
+	If you want to wait, and then read the entire buffer, use a getIncomingSerial() call after this.
+	"""
+	return serialConnection.readline().decode().strip()
 
 
 def streamFile(filename=None):
@@ -146,8 +155,7 @@ def streamFile(filename=None):
 
 		print('Sending: ' + l)
 		writeToSerial(l + '\n') # Send g-code block to grbl
-		# incomingSerial = getIncomingSerial() # fails because it doesn't wait
-		incomingSerial = serialConnection.readline().decode().strip() # wait for 'ok' before sending next line
+		incomingSerial = getIncomingSerialWait() # wait for 'ok' before sending next line
 
 		print('Received: ' + incomingSerial + " -> \t\t" + str(curLineNumber) + "/" + str(totalLines) + "=" + str(round(curLineNumber*100/totalLines, 2)) + "% in " + str(round((time.time()-startTime)/60, 2)) + " min")
 		
@@ -188,7 +196,6 @@ def sendCommand(l):
 		modeOptions["abs/rel"] = "rel"
 
 	writeToSerial(l + '\n') # Send g-code block to grbl
-	#incomingSerial = serialConnection.readline() # Wait for grbl response with carriage return
 	incomingSerial = getIncomingSerial()
 	print("\tReceived: " + incomingSerial)
 
@@ -267,6 +274,7 @@ while True:
 		if not input("Press enter to confirm sending probe with options: {} >>> ".format(probeOptions)):
 			sendMacro(probeMacro.format(probeOptions))
 			print("Probing Complete.")
+			print('Received: ' + getIncomingSerialWait())
 		else:
 			print("Cancelled Probe.")
 
